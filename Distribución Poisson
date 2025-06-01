@@ -1,0 +1,243 @@
+# -*- coding: utf-8 -*-
+"""
+Created on Sat May 31 16:03:30 2025
+
+@author: edjca
+"""
+
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+from scipy.stats import poisson # Para la PMF teórica de Poisson
+import seaborn as sns
+
+# --- 1. Generación de Datos (similar a la anterior, para que el script sea completo) ---
+# Esta sección es necesaria si no tienes df_ventas_horarias_mensuales de una ejecución previa.
+
+lambda_am_hora = 10
+lambda_almuerzo_hora = 50
+lambda_pm_hora = 30
+horas_am = [9, 10, 11]
+horas_almuerzo = [12, 13, 14, 15]
+horas_pm = [16, 17, 18, 19]
+todas_las_horas_operativas = horas_am + horas_almuerzo + horas_pm
+dias_del_mes = 30 # Para una mejor visualización de la distribución, más días serían ideales, pero 30 es un inicio.
+resultados_ventas_horarias = []
+
+for dia in range(1, dias_del_mes + 1):
+    for hora_actual in todas_las_horas_operativas:
+        periodo_actual = ""
+        lambda_actual = 0
+        if hora_actual in horas_am:
+            periodo_actual = "AM"
+            lambda_actual = lambda_am_hora
+        elif hora_actual in horas_almuerzo:
+            periodo_actual = "Almuerzo"
+            lambda_actual = lambda_almuerzo_hora
+        elif hora_actual in horas_pm:
+            periodo_actual = "PM"
+            lambda_actual = lambda_pm_hora
+        
+        ventas_simuladas_hora = np.random.poisson(lambda_actual)
+        resultados_ventas_horarias.append({
+            "Día": dia, "Hora": hora_actual, "Período": periodo_actual,
+            "Ventas Hora": ventas_simuladas_hora
+        })
+df_ventas_horarias_mensuales = pd.DataFrame(resultados_ventas_horarias)
+# --- Fin de la Generación de Datos ---
+
+
+# --- 2. Código para Graficar la Distribución de Poisson y Compararla con los Datos Simulados ---
+
+# Elegir una hora y lambda para la demostración
+# Por ejemplo, las 9:00 AM del período AM, donde lambda = 10
+hora_para_analisis = 9
+lambda_analisis = lambda_am_hora # Corresponde a lambda_am_hora = 10
+periodo_analisis = "AM"
+
+# Filtrar los datos simulados para esta hora específica
+ventas_hora_especifica = df_ventas_horarias_mensuales[
+    (df_ventas_horarias_mensuales['Hora'] == hora_para_analisis) &
+    (df_ventas_horarias_mensuales['Período'] == periodo_analisis)
+]['Ventas Hora']
+
+# Crear la figura y los ejes
+plt.figure(figsize=(12, 7))
+
+# Graficar el histograma de los datos simulados
+# Usamos density=True para que el área del histograma sume 1 (como una PMF)
+# 'bins' se puede ajustar; 'np.arange' crea bins de ancho 1 centrados en los enteros.
+max_ventas_observadas = ventas_hora_especifica.max()
+min_ventas_observadas = ventas_hora_especifica.min()
+bins = np.arange(min_ventas_observadas -1 , max_ventas_observadas + 2) - 0.5
+
+
+plt.hist(ventas_hora_especifica, bins=bins, density=True, alpha=0.7, label=f'Datos Simulados (Hora {hora_para_analisis}:00)', color='skyblue', edgecolor='black')
+
+# Generar los valores para la PMF teórica de Poisson
+# k_valores son los posibles números de ventas (0, 1, 2, ...)
+# Vamos desde 0 hasta un poco más allá del máximo observado o esperado
+k_valores = np.arange(0, max(25, max_ventas_observadas + 5)) # Ajustar el rango según sea necesario
+pmf_teorica = poisson.pmf(k_valores, lambda_analisis)
+
+# Graficar la PMF teórica de Poisson
+plt.plot(k_valores, pmf_teorica, 'ro-', label=f'PMF Teórica de Poisson (λ={lambda_analisis})', markersize=8, linewidth=2)
+
+# Añadir títulos y etiquetas
+plt.title(f'Distribución de Ventas a las {hora_para_analisis}:00 AM vs. Distribución de Poisson Teórica', fontsize=15)
+plt.xlabel('Número de Completos Vendidos en una Hora', fontsize=12)
+plt.ylabel('Probabilidad / Densidad', fontsize=12)
+plt.xticks(k_valores[::2]) # Mostrar algunos ticks en el eje x para claridad
+plt.legend(fontsize=11)
+plt.grid(True, linestyle='--', alpha=0.6)
+
+plt.tight_layout()
+plt.show()
+
+# Puedes repetir este análisis para otras horas o lambdas:
+# Ejemplo para una hora del almuerzo (ej. 12:00 PM, lambda = 50)
+# hora_para_analisis_almuerzo = 12
+# lambda_analisis_almuerzo = lambda_almuerzo_hora
+# periodo_analisis_almuerzo = "Almuerzo"
+# ventas_hora_especifica_almuerzo = df_ventas_horarias_mensuales[
+#     (df_ventas_horarias_mensuales['Hora'] == hora_para_analisis_almuerzo) &
+#     (df_ventas_horarias_mensuales['Período'] == periodo_analisis_almuerzo)
+# ]['Ventas Hora']
+# ... (repetir la lógica del gráfico con estos nuevos datos y lambda)
+
+
+
+# --- 2. Código para Graficar SOLO la Distribución de Ventas Simuladas a las 9 AM ---
+
+# Hora para el análisis
+hora_para_analisis = 9
+periodo_analisis = "AM" # Asegurándonos que el lambda_am_hora (10) se use consistentemente.
+
+# Filtrar los datos simulados para esta hora específica
+ventas_hora_especifica = df_ventas_horarias_mensuales[
+    (df_ventas_horarias_mensuales['Hora'] == hora_para_analisis) &
+    (df_ventas_horarias_mensuales['Período'] == periodo_analisis) # Importante para seleccionar el lambda correcto
+]['Ventas Hora']
+
+# Crear la figura y los ejes
+plt.figure(figsize=(10, 6)) # Ajuste de tamaño opcional
+
+# Graficar el histograma de los datos simulados
+# Usamos density=True para normalizar el histograma (área total = 1), útil para comparar con PMFs/PDFs
+# Si prefieres ver las frecuencias absolutas, usa density=False
+max_ventas_observadas = ventas_hora_especifica.max()
+min_ventas_observadas = ventas_hora_especifica.min()
+
+# Ajustar los bins para que representen adecuadamente los conteos discretos
+# Cada bin debe estar centrado en un número entero de ventas.
+# Por ejemplo, para k=5, el bin podría ir de 4.5 a 5.5
+bins = np.arange(min_ventas_observadas - 0.5, max_ventas_observadas + 1.5, 1)
+
+
+plt.hist(ventas_hora_especifica, bins=bins, density=True, alpha=0.75, label=f'Ventas Simuladas (Hora {hora_para_analisis}:00 AM)', color='dodgerblue', edgecolor='black')
+
+# Añadir títulos y etiquetas
+plt.title(f'Distribución de Ventas de Completos a las {hora_para_analisis}:00 AM', fontsize=15)
+plt.xlabel('Número de Completos Vendidos en una Hora', fontsize=12)
+plt.ylabel('Densidad de Probabilidad', fontsize=12) # O 'Frecuencia' si density=False
+
+# Ajustar los ticks del eje X para que sean más legibles si hay muchos bins
+# Por ejemplo, mostrar cada segundo tick si el rango es amplio
+# Crear ticks para cada valor entero dentro del rango observado
+ticks_x = np.arange(min_ventas_observadas, max_ventas_observadas + 1)
+if len(ticks_x) > 15: # Si hay muchos ticks, mostrar cada segundo o tercero
+    plt.xticks(ticks_x[::2])
+else:
+    plt.xticks(ticks_x)
+
+plt.legend(fontsize=11)
+plt.grid(True, linestyle='--', alpha=0.6)
+
+plt.tight_layout() # Ajusta automáticamente los parámetros del subplot para dar un buen ajuste.
+plt.show()
+
+
+
+
+
+
+
+
+
+# --- Parámetros para la Distribución de Poisson Teórica ---
+# Según el contexto anterior, para las 9 AM, lambda era 10.
+lambda_analisis = 10
+
+# --- 1. Generar los valores para la PMF teórica de Poisson ---
+# k_valores son los posibles números de ventas (0, 1, 2, ...)
+# Vamos desde 0 hasta un valor donde la probabilidad sea muy pequeña.
+# Para lambda=10, podemos ir hasta lambda + 3*sqrt(lambda) + algunos más,
+# o un valor fijo como 30 para asegurar que se vea bien.
+max_k_valor = int(lambda_analisis + 3 * np.sqrt(lambda_analisis) + 5)
+if max_k_valor < 20: # Asegurar un rango mínimo visible
+    max_k_valor = 25
+else:
+    max_k_valor = max(25, int(lambda_analisis + 3 * np.sqrt(lambda_analisis) + 5))
+
+
+k_valores = np.arange(0, max_k_valor) 
+pmf_teorica = poisson.pmf(k_valores, lambda_analisis)
+
+# --- 2. Código para Graficar SOLO la PMF Teórica de Poisson ---
+plt.figure(figsize=(10, 6))
+
+# Graficar la PMF teórica de Poisson
+# Se usa 'o-' para mostrar los puntos y unirlos con una línea,
+# ya que la distribución de Poisson es discreta.
+plt.plot(k_valores, pmf_teorica, 'ro-', label=f'PMF Teórica de Poisson ($\\lambda={lambda_analisis}$)', markersize=7, linewidth=1.5, color='crimson')
+
+# Añadir títulos y etiquetas
+plt.title(f'Distribución de Poisson Teórica ($\\lambda={lambda_analisis}$)', fontsize=15)
+plt.xlabel('Número de Eventos (k)', fontsize=12)
+plt.ylabel('Probabilidad P(X=k)', fontsize=12)
+
+# Ajustar los ticks del eje X para que sean más legibles
+plt.xticks(k_valores[::2]) # Mostrar cada segundo tick si hay muchos
+
+plt.legend(fontsize=11)
+plt.grid(True, linestyle='--', alpha=0.6)
+
+plt.tight_layout() # Ajusta automáticamente los parámetros del subplot para dar un buen ajuste.
+plt.show()
+
+
+
+import numpy as np
+import matplotlib.pyplot as plt
+from scipy.stats import poisson
+
+# Lambdas
+lambdas = [1, 3, 5, 10, 20]
+
+# Colors for the plots
+colors = ['blue', 'green', 'red', 'purple', 'orange']
+
+plt.figure(figsize=(12, 8))
+
+for i, lam in enumerate(lambdas):
+    # Generate k values (number of events)
+    # For larger lambdas, we need a wider range of k
+    if lam <= 10:
+        k = np.arange(0, 2 * lam + 10)
+    else:
+        # Mean + 3 standard deviations + a bit more for better visualization
+        k = np.arange(0, lam + 3 * np.sqrt(lam) + 5) 
+    
+    # Calculate Poisson probabilities
+    pmf = poisson.pmf(k, lam)
+    
+    # Plot
+    plt.plot(k, pmf, marker='o', linestyle='-', color=colors[i], label=f'$\\lambda={lam}$')
+
+plt.title('Distribución de Poisson para Diferentes Valores de $\\lambda$')
+plt.xlabel('Número de Eventos (k)')
+plt.ylabel('Probabilidad P(X=k)')
+plt.legend()
+plt.grid(True)
+plt.show()
+
